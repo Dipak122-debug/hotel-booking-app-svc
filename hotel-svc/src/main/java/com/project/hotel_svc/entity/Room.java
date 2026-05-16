@@ -25,6 +25,9 @@ public class Room {
     @Column(name = "room_type", nullable = false)
     private String roomType;
 
+    @Column(name = "room_no", nullable = false)
+    private String roomNumber;
+
     @Column(name = "price_per_night", precision = 10, scale = 2, nullable = false)
     private BigDecimal pricePerNight;
 

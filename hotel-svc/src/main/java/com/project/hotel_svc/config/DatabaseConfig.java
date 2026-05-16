@@ -9,6 +9,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 
+/**
+ * Database configuration class to set up DataSource and Transaction Manager
+ */
 @Configuration
 public class DatabaseConfig {
     /**
