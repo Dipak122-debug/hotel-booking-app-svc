@@ -1,0 +1,691 @@
+openapi: 3.0.0
+info:
+  title: Hotel Booking Service API
+  description: |
+    Comprehensive API for managing hotels, rooms, and room inventory in a hotel booking system.
+    
+    ## Features
+    - Hotel management (CRUD operations)
+    - Advanced hotel search with filtering
+    - Room management per hotel
+    - Room inventory tracking and updates
+
+  version: 1.0.0
+  contact:
+    name: Hotel Service Support
+    email: support@hotelbooking.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.hotelbooking.com
+    description: Production server
+
+tags:
+  - name: Hotels
+    description: Operations related to hotel management
+  - name: Rooms
+    description: Operations related to room management and inventory
+
+paths:
+  /hotels/create:
+    post:
+      tags:
+        - Hotels
+      summary: Create a new hotel
+      description: |
+        Registers a new hotel with the provided details.
+        
+        **Required Roles:** ADMIN
+      operationId: createHotel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HotelRequest'
+            examples:
+              simple:
+                summary: Simple hotel creation
+                value:
+                  name: "Grand Hotel"
+                  city: "New York"
+                  address: "123 Main St, New York, NY 10001"
+                  rating: 4.5
+      responses:
+        '200':
+          description: Hotel created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Invalid credentials
+        '403':
+          description: Forbidden - Insufficient permissions
+
+  /hotels/all:
+    get:
+      tags:
+        - Hotels
+      summary: Get all hotels
+      description: Retrieves a list of all hotels in the system.
+      operationId: getAllHotels
+      responses:
+        '200':
+          description: List of hotels retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HotelResponse'
+              examples:
+                hotels:
+                  summary: List of hotels
+                  value:
+                    - id: 1
+                      name: "Grand Hotel"
+                      city: "New York"
+                      address: "123 Main St, New York, NY 10001"
+                      rating: 4.5
+                      createdAt: "2026-05-16T10:00:00Z"
+                    - id: 2
+                      name: "Seaside Resort"
+                      city: "Miami"
+                      address: "456 Beach Ave, Miami, FL 33101"
+                      rating: 4.8
+                      createdAt: "2026-05-16T10:15:00Z"
+        '500':
+          description: Internal server error
+
+  /hotels/fetchHotel/{id}:
+    get:
+      tags:
+        - Hotels
+      summary: Get hotel by ID
+      description: Retrieves a specific hotel by its unique identifier.
+      operationId: getHotelById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier of the hotel
+          schema:
+            type: integer
+            format: int64
+            example: 1
+      responses:
+        '200':
+          description: Hotel retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HotelResponse'
+        '404':
+          description: Hotel not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+
+  /hotels/update/{id}:
+    put:
+      tags:
+        - Hotels
+      summary: Update hotel
+      description: |
+        Updates an existing hotel with the provided details.
+        
+        **Required Roles:** ADMIN
+      operationId: updateHotel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier of the hotel to update
+          schema:
+            type: integer
+            format: int64
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HotelRequest'
+            examples:
+              update:
+                summary: Update hotel details
+                value:
+                  name: "Grand Hotel Premium"
+                  city: "New York"
+                  address: "123 Main St, New York, NY 10001"
+                  rating: 4.7
+      responses:
+        '200':
+          description: Hotel updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Hotel not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Insufficient permissions
+
+  /hotels/{id}:
+    delete:
+      tags:
+        - Hotels
+      summary: Delete hotel
+      description: |
+        Deletes a hotel by its ID.
+        
+        **Required Roles:** ADMIN
+      operationId: deleteHotel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier of the hotel to delete
+          schema:
+            type: integer
+            format: int64
+            example: 1
+      responses:
+        '204':
+          description: Hotel deleted successfully
+        '404':
+          description: Hotel not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Insufficient permissions
+
+  /hotels/search:
+    get:
+      tags:
+        - Hotels
+      summary: Search hotels
+      description: |
+        Searches hotels based on optional filtering criteria.
+        
+        **Supported Filters:**
+        - City (single or multiple)
+        - Price range (minimum and/or maximum per night)
+        - Rating range (minimum and/or maximum rating)
+        
+        Filters can be used individually or in combination.
+      operationId: searchHotels
+      parameters:
+        - name: city
+          in: query
+          required: false
+          description: Filter by city name
+          schema:
+            type: string
+            example: "New York"
+        - name: minPrice
+          in: query
+          required: false
+          description: Minimum price per night
+          schema:
+            type: number
+            format: double
+            example: 50
+        - name: maxPrice
+          in: query
+          required: false
+          description: Maximum price per night
+          schema:
+            type: number
+            format: double
+            example: 500
+        - name: minRating
+          in: query
+          required: false
+          description: Minimum hotel rating (0-5)
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            maximum: 5
+            example: 4.0
+        - name: maxRating
+          in: query
+          required: false
+          description: Maximum hotel rating (0-5)
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            maximum: 5
+            example: 5.0
+      responses:
+        '200':
+          description: Search results retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HotelResponse'
+              examples:
+                search_results:
+                  summary: Hotels matching search criteria
+                  value:
+                    - id: 1
+                      name: "Grand Hotel"
+                      city: "New York"
+                      address: "123 Main St, New York, NY 10001"
+                      rating: 4.5
+                      createdAt: "2026-05-16T10:00:00Z"
+        '400':
+          description: Invalid search parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+
+  /rooms:
+    post:
+      tags:
+        - Rooms
+      summary: Create a new room
+      description: |
+        Creates a new room for a hotel with the provided details.
+        
+        **Required Roles:** ADMIN
+      operationId: createRoom
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoomRequest'
+            examples:
+              simple:
+                summary: Create a standard room
+                value:
+                  hotelId: 1
+                  roomType: "Standard Double"
+                  pricePerNight: 150.00
+                  totalRooms: 10
+      responses:
+        '200':
+          description: Room created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Hotel not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Only admins can create rooms
+
+  /rooms/{hotelId}:
+    get:
+      tags:
+        - Rooms
+      summary: Get rooms by hotel ID
+      description: Retrieves a list of all rooms for a specific hotel.
+      operationId: getRoomsByHotelId
+      parameters:
+        - name: hotelId
+          in: path
+          required: true
+          description: Unique identifier of the hotel
+          schema:
+            type: integer
+            format: int64
+            example: 1
+      responses:
+        '200':
+          description: List of rooms retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoomResponse'
+              examples:
+                rooms:
+                  summary: Rooms in a hotel
+                  value:
+                    - id: 1
+                      hotelId: 1
+                      roomNumber: "101"
+                      roomType: "Standard Double"
+                      pricePerNight: 150.00
+                      totalRooms: 10
+                      createdAt: "2026-05-16T10:30:00Z"
+                    - id: 2
+                      hotelId: 1
+                      roomNumber: "201"
+                      roomType: "Deluxe Suite"
+                      pricePerNight: 250.00
+                      totalRooms: 5
+                      createdAt: "2026-05-16T10:35:00Z"
+        '404':
+          description: Hotel not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+
+  /rooms/inventory/update:
+    put:
+      tags:
+        - Rooms
+      summary: Update room inventory
+      description: |
+        Updates the available rooms inventory for a specific date.
+        
+        This endpoint handles both creation and updates of room availability:
+        - If inventory for the date doesn't exist, it creates a new record
+        - If inventory for the date exists, it updates the available rooms count
+      operationId: updateRoomInventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoomInventoryRequest'
+            examples:
+              update:
+                summary: Update inventory for a date
+                value:
+                  roomId: 1
+                  availableDate: "2026-06-01"
+                  availableRooms: 8
+      responses:
+        '200':
+          description: Inventory updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+
+components:
+  schemas:
+    HotelRequest:
+      type: object
+      required:
+        - name
+        - city
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Name of the hotel
+          example: "Grand Hotel"
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: City where the hotel is located
+          example: "New York"
+        address:
+          type: string
+          maxLength: 500
+          description: Full address of the hotel
+          example: "123 Main St, New York, NY 10001"
+        rating:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 5
+          description: Hotel rating (0-5 scale)
+          example: 4.5
+
+    HotelResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the hotel
+          example: 1
+        name:
+          type: string
+          description: Name of the hotel
+          example: "Grand Hotel"
+        city:
+          type: string
+          description: City where the hotel is located
+          example: "New York"
+        address:
+          type: string
+          description: Full address of the hotel
+          example: "123 Main St, New York, NY 10001"
+        rating:
+          type: number
+          format: double
+          description: Hotel rating (0-5 scale)
+          example: 4.5
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the hotel was created
+          example: "2026-05-16T10:00:00Z"
+
+    RoomRequest:
+      type: object
+      required:
+        - hotelId
+        - roomType
+        - pricePerNight
+        - totalRooms
+      properties:
+        hotelId:
+          type: integer
+          format: int64
+          description: ID of the hotel this room belongs to
+          example: 1
+        roomType:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Type of room (e.g., Standard, Deluxe, Suite)
+          example: "Standard Double"
+        pricePerNight:
+          type: number
+          format: double
+          minimum: 0
+          description: Price per night in USD
+          example: 150.00
+        totalRooms:
+          type: integer
+          minimum: 1
+          description: Total number of rooms of this type
+          example: 10
+
+    RoomResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the room
+          example: 1
+        hotelId:
+          type: integer
+          format: int64
+          description: ID of the hotel this room belongs to
+          example: 1
+        roomNumber:
+          type: string
+          description: Room number
+          example: "101"
+        roomType:
+          type: string
+          description: Type of room
+          example: "Standard Double"
+        pricePerNight:
+          type: number
+          format: double
+          description: Price per night in USD
+          example: 150.00
+        totalRooms:
+          type: integer
+          description: Total number of rooms of this type
+          example: 10
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the room was created
+          example: "2026-05-16T10:30:00Z"
+
+    RoomInventoryRequest:
+      type: object
+      required:
+        - roomId
+        - availableDate
+        - availableRooms
+      properties:
+        roomId:
+          type: integer
+          format: int64
+          description: ID of the room
+          example: 1
+        availableDate:
+          type: string
+          format: date
+          description: Date for which availability is being updated (YYYY-MM-DD)
+          example: "2026-06-01"
+        availableRooms:
+          type: integer
+          minimum: 0
+          description: Number of available rooms on this date
+          example: 8
+
+    RoomInventoryResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the inventory record
+          example: 1
+        roomId:
+          type: integer
+          format: int64
+          description: ID of the room
+          example: 1
+        availableDate:
+          type: string
+          format: date
+          description: Date for which availability is recorded
+          example: "2026-06-01"
+        availableRooms:
+          type: integer
+          description: Number of available rooms on this date
+          example: 8
+
+    ApiResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+          description: Response status
+          example: "success"
+        message:
+          type: string
+          description: Human-readable message
+          example: "Hotel created successfully"
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the response
+          example: "2026-05-16T10:00:00Z"
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [error]
+          description: Response status
+          example: "error"
+        message:
+          type: string
+          description: Error message
+          example: "Hotel not found with ID: 999"
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the error
+          example: "2026-05-16T10:00:00Z"
+        errorCode:
+          type: string
+          description: Error code for programmatic handling
+          example: "NOT_FOUND"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer token authentication
+
+security:
+  - bearerAuth: []
+
+externalDocs:
+  description: Find out more about Hotel Booking Service
+  url: https://docs.hotelbooking.com
+
